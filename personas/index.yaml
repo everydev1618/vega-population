@@ -1,62 +1,209 @@
 # Vega Population - Personas Index
 
 personas:
-  cmo:
+  # ============================================
+  # C-SUITE EXECUTIVES
+  # ============================================
+  ceo:
     version: 1.0.0
-    description: Maya - data-driven growth marketer turned CMO
+    description: Alex - visionary startup CEO and company builder
     author: martellcode
-    tags: [marketing, strategy, brand, growth, leadership]
+    tags: [leadership, strategy, vision, fundraising, executive]
+
+  cfo:
+    version: 1.0.0
+    description: Jordan - startup CFO who speaks both finance and founder
+    author: martellcode
+    tags: [finance, strategy, fundraising, operations, executive]
+
+  coo:
+    version: 1.0.0
+    description: Sam - operational excellence obsessed COO
+    author: martellcode
+    tags: [operations, process, scaling, efficiency, executive]
 
   cto:
     version: 1.0.0
     description: Strategic technical leader and engineering executive
-    author: vegaops
+    author: martellcode
     tags: [leadership, strategy, architecture, management, executive]
 
+  cmo:
+    version: 1.0.0
+    description: Maya - data-driven growth marketer turned CMO
+    author: martellcode
+    tags: [marketing, strategy, brand, growth, executive]
+
+  cpo:
+    version: 1.0.0
+    description: Riley - customer-obsessed Chief Product Officer
+    author: martellcode
+    tags: [product, strategy, ux, roadmap, executive]
+
+  cro:
+    version: 1.0.0
+    description: Morgan - revenue-focused CRO who builds sales machines
+    author: martellcode
+    tags: [sales, revenue, growth, partnerships, executive]
+
+  chro:
+    version: 1.0.0
+    description: Casey - Chief People Officer who builds culture that scales
+    author: martellcode
+    tags: [people, culture, hiring, hr, executive]
+
+  clo:
+    version: 1.0.0
+    description: Taylor - startup General Counsel who enables rather than blocks
+    author: martellcode
+    tags: [legal, compliance, contracts, risk, executive]
+
+  # ============================================
+  # FINANCE TEAM
+  # ============================================
+  controller:
+    version: 1.0.0
+    description: Dana - meticulous Controller who keeps the books clean
+    author: martellcode
+    tags: [finance, accounting, compliance, audit]
+
+  fpa-analyst:
+    version: 1.0.0
+    description: Priya - FP&A analyst who turns data into decisions
+    author: martellcode
+    tags: [finance, analysis, forecasting, modeling]
+
+  # ============================================
+  # OPERATIONS TEAM
+  # ============================================
+  ops-manager:
+    version: 1.0.0
+    description: Jamie - Operations Manager who makes chaos into systems
+    author: martellcode
+    tags: [operations, process, efficiency, coordination]
+
+  project-manager:
+    version: 1.0.0
+    description: Chris - Project Manager who ships on time
+    author: martellcode
+    tags: [project-management, coordination, planning, execution]
+
+  # ============================================
+  # PRODUCT TEAM
+  # ============================================
+  product-manager:
+    version: 1.0.0
+    description: Avery - Product Manager who obsesses over user problems
+    author: martellcode
+    tags: [product, roadmap, user-research, prioritization]
+
+  ux-designer:
+    version: 1.0.0
+    description: Quinn - UX Designer who advocates for the user
+    author: martellcode
+    tags: [design, ux, user-research, prototyping]
+
+  # ============================================
+  # REVENUE/SALES TEAM
+  # ============================================
+  sales-lead:
+    version: 1.0.0
+    description: Blake - Sales Team Lead who builds winning reps
+    author: martellcode
+    tags: [sales, leadership, coaching, revenue]
+
+  account-exec:
+    version: 1.0.0
+    description: Drew - Account Executive who closes deals and builds relationships
+    author: martellcode
+    tags: [sales, closing, negotiation, relationships]
+
+  customer-success:
+    version: 1.0.0
+    description: Skyler - Customer Success Manager who drives adoption and retention
+    author: martellcode
+    tags: [customer-success, retention, onboarding, relationships]
+
+  # ============================================
+  # PEOPLE TEAM
+  # ============================================
+  recruiter:
+    version: 1.0.0
+    description: Reese - Recruiter who finds and closes great talent
+    author: martellcode
+    tags: [recruiting, talent, hiring, sourcing]
+
+  hr-partner:
+    version: 1.0.0
+    description: Ellis - HR Business Partner who supports managers and teams
+    author: martellcode
+    tags: [hr, people-ops, employee-relations, management]
+
+  # ============================================
+  # LEGAL TEAM
+  # ============================================
+  corporate-counsel:
+    version: 1.0.0
+    description: Noel - Corporate Counsel who reviews contracts and manages risk
+    author: martellcode
+    tags: [legal, contracts, compliance, risk]
+
+  # ============================================
+  # MARKETING TEAM
+  # ============================================
+  content-lead:
+    version: 1.0.0
+    description: River - Content Lead who tells the brand story
+    author: martellcode
+    tags: [content, marketing, copywriting, storytelling]
+
+  growth-marketer:
+    version: 1.0.0
+    description: Kai - Growth Marketer who runs experiments and drives acquisition
+    author: martellcode
+    tags: [growth, marketing, acquisition, analytics]
+
+  brand-designer:
+    version: 1.0.0
+    description: Sage - Brand Designer who crafts visual identity
+    author: martellcode
+    tags: [design, brand, visual-identity, creative]
+
+  # ============================================
+  # ENGINEERING TEAM (existing)
+  # ============================================
   incident-commander:
     version: 1.0.0
     description: Calm, methodical incident response coordinator
-    author: vegaops
+    author: martellcode
     tags: [incidents, sre, oncall, operations, debugging]
 
   security-analyst:
     version: 1.0.0
     description: Security-focused code reviewer and threat analyst
-    author: vegaops
+    author: martellcode
     tags: [security, review, vulnerabilities, owasp]
 
   code-reviewer:
     version: 1.0.0
     description: Thorough, constructive code reviewer
-    author: vegaops
+    author: martellcode
     tags: [review, quality, mentoring, best-practices]
 
   devops-lead:
     version: 1.0.0
     description: Infrastructure and deployment expert
-    author: vegaops
+    author: martellcode
     tags: [devops, infrastructure, ci-cd, automation]
 
   technical-writer:
     version: 1.0.0
     description: Documentation specialist
-    author: vegaops
+    author: martellcode
     tags: [documentation, writing, api-docs, readme]
-
-  frontend-mentor:
-    version: 1.0.0
-    description: UI/UX and frontend development guide
-    author: vegaops
-    tags: [frontend, react, css, accessibility, ux]
-
-  data-engineer:
-    version: 1.0.0
-    description: Data pipelines and analytics expert
-    author: vegaops
-    tags: [data, sql, etl, analytics, pipelines]
 
   architect:
     version: 1.0.0
     description: System design and architecture advisor
-    author: vegaops
+    author: martellcode
     tags: [architecture, design, scalability, patterns]
