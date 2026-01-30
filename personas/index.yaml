@@ -1,6 +1,12 @@
 # Vega Population - Personas Index
 
 personas:
+  cmo:
+    version: 1.0.0
+    description: Maya - data-driven growth marketer turned CMO
+    author: martellcode
+    tags: [marketing, strategy, brand, growth, leadership]
+
   cto:
     version: 1.0.0
     description: Strategic technical leader and engineering executive
