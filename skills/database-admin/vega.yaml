@@ -1,0 +1,242 @@
+kind: skill
+name: database-admin
+version: 1.0.0
+description: Database operations for PostgreSQL and MySQL
+author: vegaops
+tags: [database, postgresql, mysql, sql, dba]
+
+requires:
+  binaries: [psql, mysql]
+  env: []
+
+tools:
+  # PostgreSQL tools
+  - name: pg_query
+    description: Execute a PostgreSQL query
+    params:
+      query:
+        type: string
+        required: true
+        description: SQL query to execute
+      database:
+        type: string
+        required: true
+        description: Database name
+      host:
+        type: string
+        default: "localhost"
+        description: Database host
+      port:
+        type: number
+        default: 5432
+        description: Database port
+      user:
+        type: string
+        default: "postgres"
+        description: Database user
+    run: |
+      PGPASSWORD="${PGPASSWORD:-}" psql \
+        -h {{ .host }} -p {{ .port }} -U {{ .user }} -d {{ .database }} \
+        -c "{{ .query }}"
+
+  - name: pg_tables
+    description: List tables in a PostgreSQL database
+    read_only: true
+    params:
+      database:
+        type: string
+        required: true
+        description: Database name
+      schema:
+        type: string
+        default: "public"
+        description: Schema name
+      host:
+        type: string
+        default: "localhost"
+      port:
+        type: number
+        default: 5432
+      user:
+        type: string
+        default: "postgres"
+    run: |
+      PGPASSWORD="${PGPASSWORD:-}" psql \
+        -h {{ .host }} -p {{ .port }} -U {{ .user }} -d {{ .database }} \
+        -c "SELECT table_name, pg_size_pretty(pg_total_relation_size(quote_ident(table_name))) as size
+            FROM information_schema.tables
+            WHERE table_schema = '{{ .schema }}'
+            ORDER BY pg_total_relation_size(quote_ident(table_name)) DESC;"
+
+  - name: pg_connections
+    description: Show active PostgreSQL connections
+    read_only: true
+    params:
+      database:
+        type: string
+        required: true
+        description: Database name
+      host:
+        type: string
+        default: "localhost"
+      port:
+        type: number
+        default: 5432
+      user:
+        type: string
+        default: "postgres"
+    run: |
+      PGPASSWORD="${PGPASSWORD:-}" psql \
+        -h {{ .host }} -p {{ .port }} -U {{ .user }} -d {{ .database }} \
+        -c "SELECT pid, usename, application_name, client_addr, state, query_start, left(query, 50) as query
+            FROM pg_stat_activity
+            WHERE datname = '{{ .database }}'
+            ORDER BY query_start DESC
+            LIMIT 20;"
+
+  - name: pg_locks
+    description: Show PostgreSQL lock information
+    read_only: true
+    params:
+      database:
+        type: string
+        required: true
+        description: Database name
+      host:
+        type: string
+        default: "localhost"
+      port:
+        type: number
+        default: 5432
+      user:
+        type: string
+        default: "postgres"
+    run: |
+      PGPASSWORD="${PGPASSWORD:-}" psql \
+        -h {{ .host }} -p {{ .port }} -U {{ .user }} -d {{ .database }} \
+        -c "SELECT blocked_locks.pid AS blocked_pid,
+                   blocked_activity.usename AS blocked_user,
+                   blocking_locks.pid AS blocking_pid,
+                   blocking_activity.usename AS blocking_user,
+                   blocked_activity.query AS blocked_statement
+            FROM pg_catalog.pg_locks blocked_locks
+            JOIN pg_catalog.pg_stat_activity blocked_activity ON blocked_activity.pid = blocked_locks.pid
+            JOIN pg_catalog.pg_locks blocking_locks ON blocking_locks.locktype = blocked_locks.locktype
+            JOIN pg_catalog.pg_stat_activity blocking_activity ON blocking_activity.pid = blocking_locks.pid
+            WHERE NOT blocked_locks.granted;"
+
+  - name: pg_slow_queries
+    description: Show slow running PostgreSQL queries
+    read_only: true
+    params:
+      database:
+        type: string
+        required: true
+        description: Database name
+      min_duration:
+        type: string
+        default: "1 second"
+        description: Minimum query duration to show
+      host:
+        type: string
+        default: "localhost"
+      port:
+        type: number
+        default: 5432
+      user:
+        type: string
+        default: "postgres"
+    run: |
+      PGPASSWORD="${PGPASSWORD:-}" psql \
+        -h {{ .host }} -p {{ .port }} -U {{ .user }} -d {{ .database }} \
+        -c "SELECT pid, now() - query_start AS duration, usename, state, left(query, 100) as query
+            FROM pg_stat_activity
+            WHERE state != 'idle'
+              AND now() - query_start > interval '{{ .min_duration }}'
+            ORDER BY duration DESC;"
+
+  # MySQL tools
+  - name: mysql_query
+    description: Execute a MySQL query
+    params:
+      query:
+        type: string
+        required: true
+        description: SQL query to execute
+      database:
+        type: string
+        required: true
+        description: Database name
+      host:
+        type: string
+        default: "localhost"
+        description: Database host
+      port:
+        type: number
+        default: 3306
+        description: Database port
+      user:
+        type: string
+        default: "root"
+        description: Database user
+    run: |
+      mysql -h {{ .host }} -P {{ .port }} -u {{ .user }} {{ .database }} \
+        -e "{{ .query }}"
+
+  - name: mysql_tables
+    description: List tables in a MySQL database with sizes
+    read_only: true
+    params:
+      database:
+        type: string
+        required: true
+        description: Database name
+      host:
+        type: string
+        default: "localhost"
+      port:
+        type: number
+        default: 3306
+      user:
+        type: string
+        default: "root"
+    run: |
+      mysql -h {{ .host }} -P {{ .port }} -u {{ .user }} {{ .database }} \
+        -e "SELECT table_name,
+                   ROUND((data_length + index_length) / 1024 / 1024, 2) AS size_mb,
+                   table_rows
+            FROM information_schema.tables
+            WHERE table_schema = '{{ .database }}'
+            ORDER BY (data_length + index_length) DESC;"
+
+  - name: mysql_processlist
+    description: Show active MySQL processes
+    read_only: true
+    params:
+      host:
+        type: string
+        default: "localhost"
+      port:
+        type: number
+        default: 3306
+      user:
+        type: string
+        default: "root"
+    run: |
+      mysql -h {{ .host }} -P {{ .port }} -u {{ .user }} \
+        -e "SHOW FULL PROCESSLIST;"
+
+prompts:
+  safety: |
+    Database safety reminders:
+    - Always LIMIT queries when exploring
+    - Use SELECT before DELETE/UPDATE to verify
+    - Check connections before killing processes
+    - Back up before schema changes
+
+  performance: |
+    Performance debugging:
+    1. Check active connections (pg_connections, mysql_processlist)
+    2. Look for locks (pg_locks)
+    3. Find slow queries (pg_slow_queries)
+    4. Check table sizes for bloat

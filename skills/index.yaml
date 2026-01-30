@@ -1,0 +1,73 @@
+# Vega Population - Skills Index
+# This file is auto-generated from individual skill manifests
+
+skills:
+  kubernetes-ops:
+    version: 1.0.0
+    description: Kubernetes cluster management and debugging
+    author: vegaops
+    tags: [k8s, kubernetes, devops, containers, debugging]
+    tools: [kubectl_get, kubectl_describe, kubectl_logs, kubectl_exec, helm_list, helm_status]
+
+  aws-devops:
+    version: 1.0.0
+    description: AWS infrastructure management
+    author: vegaops
+    tags: [aws, cloud, infrastructure, ec2, s3, lambda]
+    tools: [aws_ec2_list, aws_ec2_describe, aws_s3_ls, aws_logs, aws_lambda_list, aws_sts_identity]
+
+  github-actions:
+    version: 1.0.0
+    description: GitHub Actions workflow management
+    author: vegaops
+    tags: [github, ci, cd, actions, workflows]
+    tools: [gh_workflow_list, gh_run_list, gh_run_view, gh_run_rerun]
+
+  docker-ops:
+    version: 1.0.0
+    description: Docker container and image management
+    author: vegaops
+    tags: [docker, containers, images, compose]
+    tools: [docker_ps, docker_logs, docker_images, docker_compose_ps, docker_stats]
+
+  database-admin:
+    version: 1.0.0
+    description: Database operations for PostgreSQL and MySQL
+    author: vegaops
+    tags: [database, postgresql, mysql, sql, dba]
+    tools: [pg_query, pg_tables, pg_connections, mysql_query, mysql_tables]
+
+  code-review:
+    version: 1.0.0
+    description: Automated code review helpers
+    author: vegaops
+    tags: [review, quality, git, diff, lint]
+    tools: [git_diff_summary, complexity_check, find_todos, lint_check]
+
+  terraform:
+    version: 1.0.0
+    description: Terraform infrastructure as code
+    author: vegaops
+    tags: [terraform, iac, infrastructure, hcl]
+    tools: [tf_plan, tf_state_list, tf_output, tf_validate]
+
+  monitoring:
+    version: 1.0.0
+    description: Prometheus and Grafana monitoring
+    author: vegaops
+    tags: [prometheus, grafana, monitoring, alerting, metrics]
+    tools: [prom_query, prom_alerts, grafana_dashboards]
+
+  git-advanced:
+    version: 1.0.0
+    description: Advanced git operations and analysis
+    author: vegaops
+    tags: [git, version-control, history, blame]
+    tools: [git_log_analysis, git_blame_summary, git_branch_compare, git_find_commit]
+
+  npm-ops:
+    version: 1.0.0
+    description: NPM package management and auditing
+    author: vegaops
+    tags: [npm, node, javascript, packages, audit]
+    tools: [npm_audit, npm_outdated, npm_list, npm_scripts]

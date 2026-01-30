@@ -1,0 +1,208 @@
+kind: skill
+name: terraform
+version: 1.0.0
+description: Terraform infrastructure as code
+author: vegaops
+tags: [terraform, iac, infrastructure, hcl]
+
+requires:
+  binaries: [terraform]
+  env: []
+
+tools:
+  - name: tf_init
+    description: Initialize Terraform working directory
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+      upgrade:
+        type: boolean
+        default: false
+        description: Upgrade provider versions
+    run: |
+      cd {{ .path }} && terraform init {{ if .upgrade }}-upgrade{{ end }}
+
+  - name: tf_plan
+    description: Create Terraform execution plan
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+      target:
+        type: string
+        description: "Target specific resource (e.g., aws_instance.web)"
+      var_file:
+        type: string
+        description: "Path to variables file"
+    run: |
+      cd {{ .path }} && terraform plan \
+        {{ if .target }}-target={{ .target }}{{ end }} \
+        {{ if .var_file }}-var-file={{ .var_file }}{{ end }} \
+        -no-color
+
+  - name: tf_apply
+    description: Apply Terraform changes
+    dangerous: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+      target:
+        type: string
+        description: "Target specific resource"
+      var_file:
+        type: string
+        description: "Path to variables file"
+      auto_approve:
+        type: boolean
+        default: false
+        description: Skip interactive approval
+    run: |
+      cd {{ .path }} && terraform apply \
+        {{ if .target }}-target={{ .target }}{{ end }} \
+        {{ if .var_file }}-var-file={{ .var_file }}{{ end }} \
+        {{ if .auto_approve }}-auto-approve{{ end }} \
+        -no-color
+
+  - name: tf_state_list
+    description: List resources in Terraform state
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+      filter:
+        type: string
+        description: "Filter resources by address pattern"
+    run: |
+      cd {{ .path }} && terraform state list {{ if .filter }}| grep "{{ .filter }}"{{ end }}
+
+  - name: tf_state_show
+    description: Show details of a resource in state
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+      address:
+        type: string
+        required: true
+        description: "Resource address (e.g., aws_instance.web)"
+    run: |
+      cd {{ .path }} && terraform state show {{ .address }}
+
+  - name: tf_output
+    description: Get Terraform outputs
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+      name:
+        type: string
+        description: Specific output name (omit for all)
+      json:
+        type: boolean
+        default: false
+        description: Output as JSON
+    run: |
+      cd {{ .path }} && terraform output \
+        {{ if .json }}-json{{ end }} \
+        {{ if .name }}{{ .name }}{{ end }}
+
+  - name: tf_validate
+    description: Validate Terraform configuration
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+    run: |
+      cd {{ .path }} && terraform validate -no-color
+
+  - name: tf_fmt
+    description: Format Terraform files
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+      check:
+        type: boolean
+        default: false
+        description: Check only, don't modify files
+    run: |
+      cd {{ .path }} && terraform fmt {{ if .check }}-check{{ end }} -recursive
+
+  - name: tf_providers
+    description: Show required providers
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+    run: |
+      cd {{ .path }} && terraform providers
+
+  - name: tf_graph
+    description: Generate resource dependency graph
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+    run: |
+      cd {{ .path }} && terraform graph -type=plan
+
+  - name: tf_workspace_list
+    description: List Terraform workspaces
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+    run: |
+      cd {{ .path }} && terraform workspace list
+
+  - name: tf_workspace_select
+    description: Select a Terraform workspace
+    params:
+      path:
+        type: string
+        default: "."
+        description: Path to Terraform configuration
+      workspace:
+        type: string
+        required: true
+        description: Workspace name
+    run: |
+      cd {{ .path }} && terraform workspace select {{ .workspace }}
+
+prompts:
+  workflow: |
+    Terraform workflow:
+    1. tf_validate - Check configuration syntax
+    2. tf_fmt - Ensure consistent formatting
+    3. tf_plan - Review what will change
+    4. tf_apply - Apply changes (with approval)
+    5. tf_output - Get outputs for next steps
+
+  safety: |
+    Terraform safety:
+    - Always run tf_plan before tf_apply
+    - Use tf_state_list to understand current state
+    - Be careful with -target (can cause drift)
+    - Use workspaces to separate environments
+    - Never store secrets in .tf files

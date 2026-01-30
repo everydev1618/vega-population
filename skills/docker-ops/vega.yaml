@@ -1,0 +1,172 @@
+kind: skill
+name: docker-ops
+version: 1.0.0
+description: Docker container and image management
+author: vegaops
+tags: [docker, containers, images, compose]
+
+requires:
+  binaries: [docker]
+
+tools:
+  - name: docker_ps
+    description: List running containers
+    read_only: true
+    params:
+      all:
+        type: boolean
+        default: false
+        description: Show all containers (including stopped)
+      filter:
+        type: string
+        description: "Filter by name, status, label (e.g., name=web, status=exited)"
+    run: |
+      docker ps \
+        {{ if .all }}-a{{ end }} \
+        {{ if .filter }}--filter "{{ .filter }}"{{ end }} \
+        --format "table {{ "{{" }}.ID{{ "}}" }}\t{{ "{{" }}.Names{{ "}}" }}\t{{ "{{" }}.Image{{ "}}" }}\t{{ "{{" }}.Status{{ "}}" }}\t{{ "{{" }}.Ports{{ "}}" }}"
+
+  - name: docker_logs
+    description: Get logs from a container
+    read_only: true
+    params:
+      container:
+        type: string
+        required: true
+        description: Container name or ID
+      tail:
+        type: number
+        default: 100
+        description: Number of lines to show
+      since:
+        type: string
+        description: "Show logs since timestamp or duration (e.g., 10m, 1h)"
+      follow:
+        type: boolean
+        default: false
+        description: Follow log output (streaming)
+    run: |
+      docker logs {{ .container }} \
+        --tail {{ .tail }} \
+        {{ if .since }}--since {{ .since }}{{ end }} \
+        {{ if .follow }}-f{{ end }}
+
+  - name: docker_inspect
+    description: Get detailed container or image information
+    read_only: true
+    params:
+      target:
+        type: string
+        required: true
+        description: Container or image name/ID
+      format:
+        type: string
+        description: "Go template format string"
+    run: |
+      docker inspect {{ .target }} {{ if .format }}--format '{{ .format }}'{{ end }}
+
+  - name: docker_images
+    description: List Docker images
+    read_only: true
+    params:
+      filter:
+        type: string
+        description: "Filter by reference, dangling, label"
+      all:
+        type: boolean
+        default: false
+        description: Show all images including intermediate
+    run: |
+      docker images \
+        {{ if .all }}-a{{ end }} \
+        {{ if .filter }}--filter "{{ .filter }}"{{ end }} \
+        --format "table {{ "{{" }}.Repository{{ "}}" }}\t{{ "{{" }}.Tag{{ "}}" }}\t{{ "{{" }}.Size{{ "}}" }}\t{{ "{{" }}.CreatedSince{{ "}}" }}"
+
+  - name: docker_stats
+    description: Show real-time container resource usage
+    read_only: true
+    params:
+      container:
+        type: string
+        description: Specific container (omit for all running)
+    run: |
+      docker stats --no-stream \
+        {{ if .container }}{{ .container }}{{ end }} \
+        --format "table {{ "{{" }}.Name{{ "}}" }}\t{{ "{{" }}.CPUPerc{{ "}}" }}\t{{ "{{" }}.MemUsage{{ "}}" }}\t{{ "{{" }}.NetIO{{ "}}" }}\t{{ "{{" }}.BlockIO{{ "}}" }}"
+
+  - name: docker_exec
+    description: Execute a command in a running container
+    dangerous: true
+    params:
+      container:
+        type: string
+        required: true
+        description: Container name or ID
+      command:
+        type: string
+        required: true
+        description: Command to execute
+      user:
+        type: string
+        description: User to run as (e.g., root)
+    run: |
+      docker exec \
+        {{ if .user }}-u {{ .user }}{{ end }} \
+        {{ .container }} {{ .command }}
+
+  - name: docker_compose_ps
+    description: List Docker Compose services
+    read_only: true
+    params:
+      file:
+        type: string
+        description: "Compose file path (default: docker-compose.yml)"
+    run: |
+      docker compose {{ if .file }}-f {{ .file }}{{ end }} ps
+
+  - name: docker_compose_logs
+    description: Get Docker Compose service logs
+    read_only: true
+    params:
+      service:
+        type: string
+        description: Specific service name (omit for all)
+      file:
+        type: string
+        description: Compose file path
+      tail:
+        type: number
+        default: 100
+        description: Number of lines to show
+    run: |
+      docker compose {{ if .file }}-f {{ .file }}{{ end }} logs \
+        --tail {{ .tail }} \
+        {{ if .service }}{{ .service }}{{ end }}
+
+  - name: docker_network_ls
+    description: List Docker networks
+    read_only: true
+    params: {}
+    run: docker network ls
+
+  - name: docker_volume_ls
+    description: List Docker volumes
+    read_only: true
+    params: {}
+    run: docker volume ls
+
+prompts:
+  debugging: |
+    Docker debugging workflow:
+    1. docker_ps to see running containers
+    2. docker_logs to check application output
+    3. docker_stats to check resource usage
+    4. docker_inspect for detailed config
+    5. docker_exec to shell into container if needed
+
+  cleanup: |
+    Docker cleanup commands (use with caution):
+    - Stopped containers: docker container prune
+    - Unused images: docker image prune
+    - Dangling volumes: docker volume prune
+    - Everything unused: docker system prune

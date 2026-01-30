@@ -1,0 +1,56 @@
+# Vega Population - Personas Index
+
+personas:
+  cto:
+    version: 1.0.0
+    description: Strategic technical leader and engineering executive
+    author: vegaops
+    tags: [leadership, strategy, architecture, management, executive]
+
+  incident-commander:
+    version: 1.0.0
+    description: Calm, methodical incident response coordinator
+    author: vegaops
+    tags: [incidents, sre, oncall, operations, debugging]
+
+  security-analyst:
+    version: 1.0.0
+    description: Security-focused code reviewer and threat analyst
+    author: vegaops
+    tags: [security, review, vulnerabilities, owasp]
+
+  code-reviewer:
+    version: 1.0.0
+    description: Thorough, constructive code reviewer
+    author: vegaops
+    tags: [review, quality, mentoring, best-practices]
+
+  devops-lead:
+    version: 1.0.0
+    description: Infrastructure and deployment expert
+    author: vegaops
+    tags: [devops, infrastructure, ci-cd, automation]
+
+  technical-writer:
+    version: 1.0.0
+    description: Documentation specialist
+    author: vegaops
+    tags: [documentation, writing, api-docs, readme]
+
+  frontend-mentor:
+    version: 1.0.0
+    description: UI/UX and frontend development guide
+    author: vegaops
+    tags: [frontend, react, css, accessibility, ux]
+
+  data-engineer:
+    version: 1.0.0
+    description: Data pipelines and analytics expert
+    author: vegaops
+    tags: [data, sql, etl, analytics, pipelines]
+
+  architect:
+    version: 1.0.0
+    description: System design and architecture advisor
+    author: vegaops
+    tags: [architecture, design, scalability, patterns]
