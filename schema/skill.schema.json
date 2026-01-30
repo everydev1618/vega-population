@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/martellcode/vega-population/schema/skill.schema.json",
+  "title": "Vega Skill",
+  "description": "Schema for a Vega skill package",
+  "type": "object",
+  "required": ["kind", "name", "version", "description", "tools"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "const": "skill"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Skill name (lowercase, alphanumeric with hyphens)"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version (e.g., 1.0.0)"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Brief description of the skill"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author name or GitHub username"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags for discovery"
+    },
+    "requires": {
+      "type": "object",
+      "properties": {
+        "binaries": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Required CLI tools"
+        },
+        "env": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Required environment variables"
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "run"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "Tool name (snake_case)"
+          },
+          "description": {
+            "type": "string",
+            "description": "What this tool does"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["string", "number", "boolean"]
+                },
+                "required": { "type": "boolean" },
+                "default": {},
+                "description": { "type": "string" }
+              }
+            }
+          },
+          "run": {
+            "type": "string",
+            "description": "Shell command template"
+          },
+          "script": {
+            "type": "string",
+            "description": "Path to script file (alternative to run)"
+          },
+          "dangerous": {
+            "type": "boolean",
+            "default": false,
+            "description": "Requires user confirmation"
+          },
+          "read_only": {
+            "type": "boolean",
+            "default": false,
+            "description": "Safe, no side effects"
+          }
+        }
+      }
+    },
+    "prompts": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Named prompt templates for guidance"
+    }
+  }
+}

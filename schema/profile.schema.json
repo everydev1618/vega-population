@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/martellcode/vega-population/schema/profile.schema.json",
+  "title": "Vega Profile",
+  "description": "Schema for a Vega profile package (persona + skills bundle)",
+  "type": "object",
+  "required": ["kind", "name", "version", "description", "persona", "skills"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "const": "profile"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Profile name (lowercase, alphanumeric with hyphens)"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version (e.g., 1.0.0)"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Brief description of the profile"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author name or GitHub username"
+    },
+    "persona": {
+      "type": "string",
+      "description": "Base persona to use"
+    },
+    "skills": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Skills to include"
+    },
+    "system_prompt_append": {
+      "type": "string",
+      "description": "Additional content to append to persona's system prompt"
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Environment variables to set"
+    }
+  }
+}

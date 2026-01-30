@@ -1,0 +1,140 @@
+kind: skill
+name: npm-ops
+version: 1.0.0
+description: NPM package management and auditing
+author: vegaops
+tags: [npm, node, javascript, packages, audit]
+
+requires:
+  binaries: [npm, node]
+
+tools:
+  - name: npm_audit
+    description: Check for security vulnerabilities in dependencies
+    read_only: true
+    params:
+      level:
+        type: string
+        default: "moderate"
+        description: "Minimum severity: low, moderate, high, critical"
+      json:
+        type: boolean
+        default: false
+        description: Output as JSON
+    run: |
+      npm audit --audit-level={{ .level }} {{ if .json }}--json{{ end }} 2>/dev/null || true
+
+  - name: npm_outdated
+    description: Check for outdated packages
+    read_only: true
+    params:
+      depth:
+        type: number
+        default: 0
+        description: Depth to check (0 for direct deps only)
+    run: |
+      npm outdated --depth={{ .depth }} 2>/dev/null || echo "All packages up to date"
+
+  - name: npm_list
+    description: List installed packages
+    read_only: true
+    params:
+      depth:
+        type: number
+        default: 0
+        description: Depth to display
+      package:
+        type: string
+        description: Filter by package name
+    run: |
+      npm list --depth={{ .depth }} {{ if .package }}{{ .package }}{{ end }}
+
+  - name: npm_scripts
+    description: List available npm scripts
+    read_only: true
+    params: {}
+    run: |
+      npm run 2>/dev/null | grep -E "^  [a-zA-Z]" || cat package.json | grep -A50 '"scripts"' | head -50
+
+  - name: npm_info
+    description: Get information about a package
+    read_only: true
+    params:
+      package:
+        type: string
+        required: true
+        description: Package name
+      field:
+        type: string
+        description: "Specific field: version, dependencies, homepage, etc."
+    run: |
+      npm info {{ .package }} {{ if .field }}{{ .field }}{{ end }}
+
+  - name: npm_search
+    description: Search npm registry for packages
+    read_only: true
+    params:
+      query:
+        type: string
+        required: true
+        description: Search query
+      limit:
+        type: number
+        default: 10
+    run: |
+      npm search {{ .query }} --long 2>/dev/null | head -{{ .limit }}
+
+  - name: npm_why
+    description: Explain why a package is installed
+    read_only: true
+    params:
+      package:
+        type: string
+        required: true
+        description: Package name
+    run: |
+      npm why {{ .package }} 2>/dev/null || npm ls {{ .package }}
+
+  - name: npm_dedupe
+    description: Reduce duplication in node_modules (dry run)
+    read_only: true
+    params: {}
+    run: |
+      npm dedupe --dry-run 2>/dev/null
+
+  - name: npm_cache_clean
+    description: Show cache status and clean if needed
+    dangerous: true
+    params:
+      verify:
+        type: boolean
+        default: true
+        description: Verify cache integrity instead of cleaning
+    run: |
+      {{ if .verify }}npm cache verify{{ else }}npm cache clean --force{{ end }}
+
+  - name: node_version
+    description: Check Node.js and npm versions
+    read_only: true
+    params: {}
+    run: |
+      echo "Node: $(node --version)" && \
+      echo "NPM: $(npm --version)" && \
+      echo "" && \
+      if [ -f ".nvmrc" ]; then echo "Project requires: $(cat .nvmrc)"; fi && \
+      if [ -f "package.json" ]; then grep -E '"node"|"npm"' package.json 2>/dev/null || true; fi
+
+prompts:
+  security: |
+    NPM security workflow:
+    1. npm_audit to find vulnerabilities
+    2. npm_outdated to see what can be updated
+    3. npm_why to understand dependency chains
+    4. Update cautiously, test thoroughly
+
+  debugging: |
+    When debugging npm issues:
+    1. node_version - right versions?
+    2. npm_list - what's actually installed?
+    3. npm_why - why is this package here?
+    4. Try: rm -rf node_modules && npm install

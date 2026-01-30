@@ -1,0 +1,185 @@
+kind: skill
+name: code-review
+version: 1.0.0
+description: Automated code review helpers
+author: vegaops
+tags: [review, quality, git, diff, lint]
+
+requires:
+  binaries: [git]
+
+tools:
+  - name: git_diff_summary
+    description: Get a summary of changes in a branch or commit range
+    read_only: true
+    params:
+      target:
+        type: string
+        default: "HEAD"
+        description: "Commit, branch, or range (e.g., main..feature, HEAD~5)"
+      base:
+        type: string
+        default: "main"
+        description: Base branch to compare against
+      stat_only:
+        type: boolean
+        default: false
+        description: Show only file statistics, not full diff
+    run: |
+      {{ if .stat_only }}
+      git diff --stat {{ .base }}...{{ .target }}
+      {{ else }}
+      echo "=== Changed Files ===" && \
+      git diff --stat {{ .base }}...{{ .target }} && \
+      echo "" && \
+      echo "=== Full Diff ===" && \
+      git diff {{ .base }}...{{ .target }}
+      {{ end }}
+
+  - name: git_log_pr
+    description: Show commits that would be in a PR
+    read_only: true
+    params:
+      branch:
+        type: string
+        default: "HEAD"
+        description: Feature branch
+      base:
+        type: string
+        default: "main"
+        description: Base branch
+    run: |
+      git log --oneline --no-merges {{ .base }}..{{ .branch }}
+
+  - name: find_todos
+    description: Find TODO, FIXME, HACK, XXX comments in the codebase
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Directory to search
+      pattern:
+        type: string
+        default: "TODO|FIXME|HACK|XXX"
+        description: Regex pattern to search for
+    run: |
+      grep -rn --include="*.go" --include="*.js" --include="*.ts" --include="*.py" --include="*.java" --include="*.rs" \
+        -E "{{ .pattern }}" {{ .path }} 2>/dev/null || echo "No matches found"
+
+  - name: complexity_check
+    description: Find potentially complex functions (high line count)
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Directory to analyze
+      threshold:
+        type: number
+        default: 50
+        description: Line count threshold for flagging
+    run: |
+      echo "Functions over {{ .threshold }} lines:" && \
+      find {{ .path }} -name "*.go" -exec awk '
+        /^func / { fname=$0; start=NR }
+        /^}$/ && fname {
+          lines=NR-start
+          if (lines > {{ .threshold }}) print FILENAME ":" start ": " lines " lines - " fname
+          fname=""
+        }
+      ' {} \; 2>/dev/null | head -20
+
+  - name: find_large_files
+    description: Find unusually large source files
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Directory to search
+      threshold:
+        type: number
+        default: 500
+        description: Line count threshold
+    run: |
+      find {{ .path }} -name "*.go" -o -name "*.js" -o -name "*.ts" -o -name "*.py" | \
+      xargs wc -l 2>/dev/null | \
+      awk -v threshold={{ .threshold }} '$1 > threshold && !/total$/ {print}' | \
+      sort -rn | head -20
+
+  - name: find_duplicate_code
+    description: Find potential duplicate code blocks
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Directory to search
+      min_lines:
+        type: number
+        default: 5
+        description: Minimum lines to consider a duplicate
+    run: |
+      echo "Looking for repeated code patterns ({{ .min_lines }}+ lines)..." && \
+      find {{ .path }} -name "*.go" -exec cat {} \; 2>/dev/null | \
+      awk 'NF {lines[NR]=$0} END {
+        for(i=1; i<=NR-{{ .min_lines }}; i++) {
+          block=""
+          for(j=0; j<{{ .min_lines }}; j++) block=block lines[i+j]
+          if(seen[block]++) dups[block]++
+        }
+        for(b in dups) if(dups[b]>0) print "Found " dups[b]+1 " occurrences"
+      }' | head -10
+
+  - name: check_imports
+    description: Check for unused or duplicate imports (Go)
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Directory to check
+    run: |
+      echo "Checking Go imports..." && \
+      find {{ .path }} -name "*.go" -exec grep -l "^import" {} \; | head -10 | \
+      xargs -I {} sh -c 'echo "=== {} ===" && go vet {} 2>&1 | grep -i import || echo "OK"'
+
+  - name: security_scan
+    description: Quick scan for potential security issues
+    read_only: true
+    params:
+      path:
+        type: string
+        default: "."
+        description: Directory to scan
+    run: |
+      echo "=== Potential hardcoded secrets ===" && \
+      grep -rn --include="*.go" --include="*.js" --include="*.py" \
+        -E "(password|secret|api_key|apikey|token).*=.*['\"][^'\"]+['\"]" {{ .path }} 2>/dev/null | \
+        grep -v "_test\." | head -10 && \
+      echo "" && \
+      echo "=== SQL injection risks (string concat in queries) ===" && \
+      grep -rn --include="*.go" -E "fmt\.Sprintf.*SELECT|\"SELECT.*\+.*\"" {{ .path }} 2>/dev/null | head -10 && \
+      echo "" && \
+      echo "=== Unsafe file operations ===" && \
+      grep -rn --include="*.go" -E "os\.(Remove|RemoveAll|Chmod)" {{ .path }} 2>/dev/null | head -10
+
+prompts:
+  review_checklist: |
+    Code review checklist:
+    1. Does the code do what it claims? (Read the PR description)
+    2. Are there obvious bugs or logic errors?
+    3. Is error handling appropriate?
+    4. Are there security concerns? (Run security_scan)
+    5. Is the code readable and maintainable?
+    6. Are there tests for new functionality?
+    7. Any TODOs that should be addressed? (Run find_todos)
+
+  feedback_style: |
+    When giving code review feedback:
+    - Be specific: point to exact lines
+    - Explain why, not just what
+    - Suggest alternatives when criticizing
+    - Acknowledge good patterns too
+    - Distinguish blocking issues from suggestions

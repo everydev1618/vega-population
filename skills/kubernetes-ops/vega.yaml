@@ -1,0 +1,208 @@
+kind: skill
+name: kubernetes-ops
+version: 1.0.0
+description: Kubernetes cluster management and debugging
+author: vegaops
+tags: [k8s, kubernetes, devops, containers, debugging]
+
+requires:
+  binaries: [kubectl, helm]
+  env: [KUBECONFIG]
+
+tools:
+  - name: kubectl_get
+    description: Get Kubernetes resources (pods, deployments, services, nodes, configmaps, secrets, etc.)
+    read_only: true
+    params:
+      resource:
+        type: string
+        required: true
+        description: "Resource type: pods, deployments, services, nodes, configmaps, secrets, ingress, pvc, etc."
+      namespace:
+        type: string
+        default: "default"
+        description: Kubernetes namespace (use "all" for all namespaces)
+      selector:
+        type: string
+        description: "Label selector (e.g., app=nginx, tier=frontend)"
+      output:
+        type: string
+        default: "wide"
+        description: "Output format: wide, yaml, json, name"
+    run: |
+      kubectl get {{ .resource }} \
+        {{ if eq .namespace "all" }}-A{{ else }}-n {{ .namespace }}{{ end }} \
+        {{ if .selector }}-l {{ .selector }}{{ end }} \
+        -o {{ .output }}
+
+  - name: kubectl_describe
+    description: Get detailed information about a specific Kubernetes resource
+    read_only: true
+    params:
+      resource:
+        type: string
+        required: true
+        description: "Resource type (pod, deployment, service, node, etc.)"
+      name:
+        type: string
+        required: true
+        description: Name of the resource
+      namespace:
+        type: string
+        default: "default"
+        description: Kubernetes namespace
+    run: kubectl describe {{ .resource }} {{ .name }} -n {{ .namespace }}
+
+  - name: kubectl_logs
+    description: Get logs from a pod or container
+    read_only: true
+    params:
+      pod:
+        type: string
+        required: true
+        description: Name of the pod
+      namespace:
+        type: string
+        default: "default"
+        description: Kubernetes namespace
+      container:
+        type: string
+        description: Specific container name (for multi-container pods)
+      tail:
+        type: number
+        default: 100
+        description: Number of lines to show from the end
+      previous:
+        type: boolean
+        default: false
+        description: Show logs from the previous container instance (useful for crash debugging)
+      since:
+        type: string
+        description: "Only show logs since duration (e.g., 5m, 1h, 24h)"
+    run: |
+      kubectl logs {{ .pod }} -n {{ .namespace }} \
+        {{ if .container }}-c {{ .container }}{{ end }} \
+        --tail={{ .tail }} \
+        {{ if .previous }}--previous{{ end }} \
+        {{ if .since }}--since={{ .since }}{{ end }}
+
+  - name: kubectl_exec
+    description: Execute a command inside a running pod
+    dangerous: true
+    params:
+      pod:
+        type: string
+        required: true
+        description: Name of the pod
+      namespace:
+        type: string
+        default: "default"
+        description: Kubernetes namespace
+      container:
+        type: string
+        description: Specific container name
+      command:
+        type: string
+        required: true
+        description: Command to execute
+    run: |
+      kubectl exec {{ .pod }} -n {{ .namespace }} \
+        {{ if .container }}-c {{ .container }}{{ end }} \
+        -- {{ .command }}
+
+  - name: kubectl_events
+    description: Get Kubernetes events for debugging
+    read_only: true
+    params:
+      namespace:
+        type: string
+        default: "default"
+        description: Kubernetes namespace (use "all" for all namespaces)
+      field_selector:
+        type: string
+        description: "Field selector (e.g., involvedObject.name=my-pod, type=Warning)"
+    run: |
+      kubectl get events \
+        {{ if eq .namespace "all" }}-A{{ else }}-n {{ .namespace }}{{ end }} \
+        {{ if .field_selector }}--field-selector={{ .field_selector }}{{ end }} \
+        --sort-by='.lastTimestamp'
+
+  - name: helm_list
+    description: List Helm releases
+    read_only: true
+    params:
+      namespace:
+        type: string
+        description: Specific namespace (omit for all namespaces)
+      filter:
+        type: string
+        description: Filter releases by name pattern
+    run: |
+      helm list \
+        {{ if .namespace }}-n {{ .namespace }}{{ else }}-A{{ end }} \
+        {{ if .filter }}--filter {{ .filter }}{{ end }}
+
+  - name: helm_status
+    description: Get status of a Helm release
+    read_only: true
+    params:
+      release:
+        type: string
+        required: true
+        description: Name of the Helm release
+      namespace:
+        type: string
+        default: "default"
+        description: Kubernetes namespace
+    run: helm status {{ .release }} -n {{ .namespace }}
+
+  - name: helm_values
+    description: Get the values of a deployed Helm release
+    read_only: true
+    params:
+      release:
+        type: string
+        required: true
+        description: Name of the Helm release
+      namespace:
+        type: string
+        default: "default"
+        description: Kubernetes namespace
+    run: helm get values {{ .release }} -n {{ .namespace }}
+
+  - name: kubectl_top
+    description: Show resource usage (CPU/memory) for pods or nodes
+    read_only: true
+    params:
+      resource:
+        type: string
+        required: true
+        description: "Resource type: pods or nodes"
+      namespace:
+        type: string
+        default: "default"
+        description: Kubernetes namespace (for pods)
+      selector:
+        type: string
+        description: Label selector to filter
+    run: |
+      kubectl top {{ .resource }} \
+        {{ if and (eq .resource "pods") (ne .namespace "all") }}-n {{ .namespace }}{{ end }} \
+        {{ if and (eq .resource "pods") (eq .namespace "all") }}-A{{ end }} \
+        {{ if .selector }}-l {{ .selector }}{{ end }}
+
+prompts:
+  debugging: |
+    When debugging Kubernetes issues:
+    1. Start with `kubectl_get pods` to see pod status
+    2. For CrashLoopBackOff, check logs with `kubectl_logs` (try previous: true)
+    3. For Pending pods, use `kubectl_describe` to see events
+    4. Use `kubectl_events` to see cluster-wide issues
+    5. Check resource usage with `kubectl_top`
+
+  common_issues: |
+    Common Kubernetes issues and how to diagnose:
+    - ImagePullBackOff: Check image name, registry access, imagePullSecrets
+    - CrashLoopBackOff: Check logs, resource limits, readiness probes
+    - Pending: Check node resources, nodeSelector, taints/tolerations
+    - OOMKilled: Increase memory limits, check for memory leaks

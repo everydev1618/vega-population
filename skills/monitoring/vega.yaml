@@ -1,0 +1,179 @@
+kind: skill
+name: monitoring
+version: 1.0.0
+description: Prometheus and Grafana monitoring
+author: vegaops
+tags: [prometheus, grafana, monitoring, alerting, metrics]
+
+requires:
+  binaries: [curl]
+  env: [PROMETHEUS_URL, GRAFANA_URL]
+
+tools:
+  - name: prom_query
+    description: Execute a PromQL query
+    read_only: true
+    params:
+      query:
+        type: string
+        required: true
+        description: "PromQL query (e.g., up, rate(http_requests_total[5m]))"
+      time:
+        type: string
+        description: "Evaluation timestamp (RFC3339 or Unix)"
+      url:
+        type: string
+        default: "${PROMETHEUS_URL:-http://localhost:9090}"
+        description: Prometheus URL
+    run: |
+      curl -sG "{{ .url }}/api/v1/query" \
+        --data-urlencode "query={{ .query }}" \
+        {{ if .time }}--data-urlencode "time={{ .time }}"{{ end }} | \
+      jq -r '.data.result[] | "\(.metric | to_entries | map("\(.key)=\(.value)") | join(",")): \(.value[1])"'
+
+  - name: prom_query_range
+    description: Execute a PromQL range query
+    read_only: true
+    params:
+      query:
+        type: string
+        required: true
+        description: PromQL query
+      start:
+        type: string
+        default: "1h"
+        description: "Start time (duration ago or RFC3339)"
+      end:
+        type: string
+        default: "now"
+        description: "End time"
+      step:
+        type: string
+        default: "1m"
+        description: "Query resolution step"
+      url:
+        type: string
+        default: "${PROMETHEUS_URL:-http://localhost:9090}"
+        description: Prometheus URL
+    run: |
+      START=$(date -d "{{ .start }} ago" +%s 2>/dev/null || date -v-{{ .start }} +%s)
+      END=$(date +%s)
+      curl -sG "{{ .url }}/api/v1/query_range" \
+        --data-urlencode "query={{ .query }}" \
+        --data-urlencode "start=$START" \
+        --data-urlencode "end=$END" \
+        --data-urlencode "step={{ .step }}" | \
+      jq -r '.data.result[0].values[-5:][] | "\(.[0] | todate): \(.[1])"'
+
+  - name: prom_alerts
+    description: Get current Prometheus alerts
+    read_only: true
+    params:
+      state:
+        type: string
+        description: "Filter by state: firing, pending, inactive"
+      url:
+        type: string
+        default: "${PROMETHEUS_URL:-http://localhost:9090}"
+        description: Prometheus URL
+    run: |
+      curl -s "{{ .url }}/api/v1/alerts" | \
+      jq -r '.data.alerts[] {{ if .state }}| select(.state == "{{ .state }}"){{ end }} | "\(.state | ascii_upcase): \(.labels.alertname) - \(.annotations.summary // .annotations.description // "no description")"'
+
+  - name: prom_targets
+    description: List Prometheus scrape targets and their health
+    read_only: true
+    params:
+      state:
+        type: string
+        description: "Filter by state: active, dropped"
+      url:
+        type: string
+        default: "${PROMETHEUS_URL:-http://localhost:9090}"
+        description: Prometheus URL
+    run: |
+      curl -s "{{ .url }}/api/v1/targets" | \
+      jq -r '.data.activeTargets[] | "\(.health | ascii_upcase): \(.labels.job) - \(.scrapeUrl)"'
+
+  - name: prom_rules
+    description: List Prometheus alerting and recording rules
+    read_only: true
+    params:
+      type:
+        type: string
+        description: "Filter by type: alert, record"
+      url:
+        type: string
+        default: "${PROMETHEUS_URL:-http://localhost:9090}"
+        description: Prometheus URL
+    run: |
+      curl -s "{{ .url }}/api/v1/rules" | \
+      jq -r '.data.groups[].rules[] {{ if .type }}| select(.type == "{{ .type }}"){{ end }} | "\(.type): \(.name)"'
+
+  - name: prom_series
+    description: Find time series matching a selector
+    read_only: true
+    params:
+      match:
+        type: string
+        required: true
+        description: "Series selector (e.g., {job=\"api\"})"
+      url:
+        type: string
+        default: "${PROMETHEUS_URL:-http://localhost:9090}"
+        description: Prometheus URL
+    run: |
+      curl -sG "{{ .url }}/api/v1/series" \
+        --data-urlencode "match[]={{ .match }}" | \
+      jq -r '.data[] | to_entries | map("\(.key)=\(.value)") | join(",")'
+
+  - name: grafana_dashboards
+    description: List Grafana dashboards
+    read_only: true
+    params:
+      url:
+        type: string
+        default: "${GRAFANA_URL:-http://localhost:3000}"
+        description: Grafana URL
+      query:
+        type: string
+        description: Search query
+    run: |
+      curl -s "{{ .url }}/api/search?type=dash-db{{ if .query }}&query={{ .query }}{{ end }}" \
+        -H "Authorization: Bearer ${GRAFANA_TOKEN:-}" | \
+      jq -r '.[] | "\(.title) (uid: \(.uid))"'
+
+  - name: grafana_dashboard_get
+    description: Get a Grafana dashboard by UID
+    read_only: true
+    params:
+      uid:
+        type: string
+        required: true
+        description: Dashboard UID
+      url:
+        type: string
+        default: "${GRAFANA_URL:-http://localhost:3000}"
+        description: Grafana URL
+    run: |
+      curl -s "{{ .url }}/api/dashboards/uid/{{ .uid }}" \
+        -H "Authorization: Bearer ${GRAFANA_TOKEN:-}" | \
+      jq '.dashboard | {title, tags, panels: [.panels[]? | {title, type}]}'
+
+prompts:
+  common_queries: |
+    Useful PromQL queries:
+    - Service health: up{job="myservice"}
+    - Request rate: rate(http_requests_total[5m])
+    - Error rate: rate(http_requests_total{status=~"5.."}[5m])
+    - Latency P99: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))
+    - CPU usage: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+    - Memory usage: node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
+
+  debugging: |
+    Monitoring debugging workflow:
+    1. Check prom_targets for scrape health
+    2. Check prom_alerts for active issues
+    3. Use prom_query for current values
+    4. Use prom_query_range for trends
+    5. Find relevant dashboards with grafana_dashboards

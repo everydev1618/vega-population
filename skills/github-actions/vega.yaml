@@ -1,0 +1,164 @@
+kind: skill
+name: github-actions
+version: 1.0.0
+description: GitHub Actions workflow management
+author: vegaops
+tags: [github, ci, cd, actions, workflows]
+
+requires:
+  binaries: [gh]
+  env: [GITHUB_TOKEN]
+
+tools:
+  - name: gh_workflow_list
+    description: List GitHub Actions workflows in a repository
+    read_only: true
+    params:
+      repo:
+        type: string
+        description: "Repository (owner/repo). Uses current repo if omitted."
+    run: |
+      gh workflow list {{ if .repo }}-R {{ .repo }}{{ end }}
+
+  - name: gh_run_list
+    description: List recent workflow runs
+    read_only: true
+    params:
+      repo:
+        type: string
+        description: "Repository (owner/repo)"
+      workflow:
+        type: string
+        description: "Filter by workflow name or filename"
+      branch:
+        type: string
+        description: "Filter by branch"
+      status:
+        type: string
+        description: "Filter by status: queued, in_progress, completed, success, failure, cancelled"
+      limit:
+        type: number
+        default: 10
+        description: Number of runs to show
+    run: |
+      gh run list \
+        {{ if .repo }}-R {{ .repo }}{{ end }} \
+        {{ if .workflow }}-w "{{ .workflow }}"{{ end }} \
+        {{ if .branch }}-b {{ .branch }}{{ end }} \
+        {{ if .status }}-s {{ .status }}{{ end }} \
+        -L {{ .limit }}
+
+  - name: gh_run_view
+    description: View details of a specific workflow run
+    read_only: true
+    params:
+      run_id:
+        type: string
+        required: true
+        description: The workflow run ID
+      repo:
+        type: string
+        description: "Repository (owner/repo)"
+      log:
+        type: boolean
+        default: false
+        description: Show full log output
+    run: |
+      gh run view {{ .run_id }} \
+        {{ if .repo }}-R {{ .repo }}{{ end }} \
+        {{ if .log }}--log{{ end }}
+
+  - name: gh_run_rerun
+    description: Re-run a failed workflow
+    dangerous: true
+    params:
+      run_id:
+        type: string
+        required: true
+        description: The workflow run ID to rerun
+      repo:
+        type: string
+        description: "Repository (owner/repo)"
+      failed_only:
+        type: boolean
+        default: true
+        description: Only rerun failed jobs (faster)
+    run: |
+      gh run rerun {{ .run_id }} \
+        {{ if .repo }}-R {{ .repo }}{{ end }} \
+        {{ if .failed_only }}--failed{{ end }}
+
+  - name: gh_run_cancel
+    description: Cancel a running workflow
+    dangerous: true
+    params:
+      run_id:
+        type: string
+        required: true
+        description: The workflow run ID to cancel
+      repo:
+        type: string
+        description: "Repository (owner/repo)"
+    run: gh run cancel {{ .run_id }} {{ if .repo }}-R {{ .repo }}{{ end }}
+
+  - name: gh_workflow_run
+    description: Manually trigger a workflow
+    dangerous: true
+    params:
+      workflow:
+        type: string
+        required: true
+        description: "Workflow filename or name"
+      repo:
+        type: string
+        description: "Repository (owner/repo)"
+      ref:
+        type: string
+        default: "main"
+        description: "Branch or tag to run on"
+      inputs:
+        type: string
+        description: "JSON object of workflow inputs"
+    run: |
+      gh workflow run "{{ .workflow }}" \
+        {{ if .repo }}-R {{ .repo }}{{ end }} \
+        --ref {{ .ref }} \
+        {{ if .inputs }}-f '{{ .inputs }}'{{ end }}
+
+  - name: gh_pr_checks
+    description: View CI checks for a pull request
+    read_only: true
+    params:
+      pr:
+        type: string
+        required: true
+        description: "PR number or URL"
+      repo:
+        type: string
+        description: "Repository (owner/repo)"
+    run: |
+      gh pr checks {{ .pr }} {{ if .repo }}-R {{ .repo }}{{ end }}
+
+  - name: gh_actions_cache
+    description: List GitHub Actions caches
+    read_only: true
+    params:
+      repo:
+        type: string
+        description: "Repository (owner/repo)"
+    run: |
+      gh cache list {{ if .repo }}-R {{ .repo }}{{ end }}
+
+prompts:
+  ci_debugging: |
+    When debugging CI failures:
+    1. Use gh_run_list to find the failing run
+    2. Use gh_run_view with log:true to see what failed
+    3. Check if it's a flaky test (look at recent history)
+    4. Consider gh_run_rerun with failed_only:true
+
+  best_practices: |
+    GitHub Actions tips:
+    - Use gh_pr_checks to verify PR CI status
+    - Check cache usage with gh_actions_cache
+    - Prefer failed_only reruns (faster, cheaper)

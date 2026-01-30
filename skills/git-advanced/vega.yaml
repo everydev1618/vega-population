@@ -1,0 +1,186 @@
+kind: skill
+name: git-advanced
+version: 1.0.0
+description: Advanced git operations and analysis
+author: vegaops
+tags: [git, version-control, history, blame]
+
+requires:
+  binaries: [git]
+
+tools:
+  - name: git_log_analysis
+    description: Analyze commit history with various filters
+    read_only: true
+    params:
+      author:
+        type: string
+        description: Filter by author name or email
+      since:
+        type: string
+        description: "Show commits since date (e.g., '2 weeks ago', '2024-01-01')"
+      until:
+        type: string
+        description: "Show commits until date"
+      path:
+        type: string
+        description: Filter by file path
+      grep:
+        type: string
+        description: Search commit messages
+      limit:
+        type: number
+        default: 20
+        description: Maximum commits to show
+    run: |
+      git log --oneline --stat \
+        {{ if .author }}--author="{{ .author }}"{{ end }} \
+        {{ if .since }}--since="{{ .since }}"{{ end }} \
+        {{ if .until }}--until="{{ .until }}"{{ end }} \
+        {{ if .grep }}--grep="{{ .grep }}"{{ end }} \
+        -n {{ .limit }} \
+        {{ if .path }}-- {{ .path }}{{ end }}
+
+  - name: git_blame_summary
+    description: Get blame information for a file or line range
+    read_only: true
+    params:
+      file:
+        type: string
+        required: true
+        description: File to blame
+      start_line:
+        type: number
+        description: Start line number
+      end_line:
+        type: number
+        description: End line number
+    run: |
+      git blame \
+        {{ if and .start_line .end_line }}-L {{ .start_line }},{{ .end_line }}{{ end }} \
+        --line-porcelain {{ .file }} | \
+      grep -E "^(author |author-time |summary )" | \
+      paste - - - | \
+      sort | uniq -c | sort -rn | head -10
+
+  - name: git_branch_compare
+    description: Compare two branches showing commits and file changes
+    read_only: true
+    params:
+      base:
+        type: string
+        default: "main"
+        description: Base branch
+      compare:
+        type: string
+        default: "HEAD"
+        description: Branch to compare
+    run: |
+      echo "=== Commits in {{ .compare }} but not in {{ .base }} ===" && \
+      git log --oneline {{ .base }}..{{ .compare }} && \
+      echo "" && \
+      echo "=== Files changed ===" && \
+      git diff --stat {{ .base }}...{{ .compare }}
+
+  - name: git_find_commit
+    description: Find commits that introduced or changed a specific string
+    read_only: true
+    params:
+      search:
+        type: string
+        required: true
+        description: String to search for in diffs
+      file:
+        type: string
+        description: Limit search to specific file
+    run: |
+      git log -p -S "{{ .search }}" --oneline \
+        {{ if .file }}-- {{ .file }}{{ end }} | \
+      head -100
+
+  - name: git_contributors
+    description: List contributors and their commit counts
+    read_only: true
+    params:
+      since:
+        type: string
+        description: "Only count commits since date"
+      path:
+        type: string
+        description: "Only count commits touching this path"
+    run: |
+      git shortlog -sn \
+        {{ if .since }}--since="{{ .since }}"{{ end }} \
+        {{ if .path }}-- {{ .path }}{{ end }}
+
+  - name: git_file_history
+    description: Show the complete history of a file including renames
+    read_only: true
+    params:
+      file:
+        type: string
+        required: true
+        description: File path
+      limit:
+        type: number
+        default: 20
+    run: |
+      git log --follow --oneline -n {{ .limit }} -- {{ .file }}
+
+  - name: git_recent_changes
+    description: Show files changed in recent commits
+    read_only: true
+    params:
+      days:
+        type: number
+        default: 7
+        description: Number of days to look back
+    run: |
+      git log --since="{{ .days }} days ago" --name-only --pretty=format: | \
+      sort | uniq -c | sort -rn | head -20
+
+  - name: git_stash_list
+    description: List git stashes with details
+    read_only: true
+    params: {}
+    run: |
+      git stash list --format="%gd: %s (%cr)"
+
+  - name: git_reflog
+    description: Show reflog for recovering lost commits
+    read_only: true
+    params:
+      limit:
+        type: number
+        default: 20
+    run: |
+      git reflog --oneline -n {{ .limit }}
+
+  - name: git_merge_base
+    description: Find the common ancestor of two branches
+    read_only: true
+    params:
+      branch1:
+        type: string
+        required: true
+      branch2:
+        type: string
+        default: "HEAD"
+    run: |
+      BASE=$(git merge-base {{ .branch1 }} {{ .branch2 }}) && \
+      echo "Merge base: $BASE" && \
+      git log --oneline -1 $BASE
+
+prompts:
+  investigation: |
+    When investigating git history:
+    1. git_recent_changes to see what's been active
+    2. git_file_history for specific file evolution
+    3. git_blame_summary to find who changed what
+    4. git_find_commit to locate when something was added/removed
+
+  recovery: |
+    If you need to recover work:
+    - git_reflog shows recent HEAD movements
+    - git_stash_list shows stashed changes
+    - Lost commits are usually in reflog for 30 days

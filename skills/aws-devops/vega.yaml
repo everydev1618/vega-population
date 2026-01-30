@@ -1,0 +1,171 @@
+kind: skill
+name: aws-devops
+version: 1.0.0
+description: AWS infrastructure management
+author: vegaops
+tags: [aws, cloud, infrastructure, ec2, s3, lambda]
+
+requires:
+  binaries: [aws]
+  env: [AWS_PROFILE, AWS_REGION]
+
+tools:
+  - name: aws_sts_identity
+    description: Get current AWS identity (who am I?)
+    read_only: true
+    params: {}
+    run: aws sts get-caller-identity
+
+  - name: aws_ec2_list
+    description: List EC2 instances
+    read_only: true
+    params:
+      filters:
+        type: string
+        description: "Filter by tag, state, etc. (e.g., Name=tag:Environment,Values=prod)"
+      state:
+        type: string
+        description: "Filter by state: running, stopped, pending, terminated"
+    run: |
+      aws ec2 describe-instances \
+        {{ if .state }}--filters "Name=instance-state-name,Values={{ .state }}"{{ end }} \
+        {{ if .filters }}--filters "{{ .filters }}"{{ end }} \
+        --query 'Reservations[].Instances[].{ID:InstanceId,Type:InstanceType,State:State.Name,Name:Tags[?Key==`Name`]|[0].Value,IP:PrivateIpAddress,PublicIP:PublicIpAddress}' \
+        --output table
+
+  - name: aws_ec2_describe
+    description: Get detailed information about an EC2 instance
+    read_only: true
+    params:
+      instance_id:
+        type: string
+        required: true
+        description: EC2 instance ID (i-xxxxx)
+    run: aws ec2 describe-instances --instance-ids {{ .instance_id }}
+
+  - name: aws_s3_ls
+    description: List S3 buckets or bucket contents
+    read_only: true
+    params:
+      bucket:
+        type: string
+        description: "Bucket name (omit to list all buckets). Can include prefix: bucket/path/"
+      recursive:
+        type: boolean
+        default: false
+        description: List recursively
+    run: |
+      {{ if .bucket }}
+      aws s3 ls s3://{{ .bucket }} {{ if .recursive }}--recursive{{ end }} --human-readable
+      {{ else }}
+      aws s3 ls
+      {{ end }}
+
+  - name: aws_logs
+    description: Get CloudWatch logs
+    read_only: true
+    params:
+      log_group:
+        type: string
+        required: true
+        description: CloudWatch log group name
+      filter:
+        type: string
+        description: Filter pattern for logs
+      since:
+        type: string
+        default: "1h"
+        description: "How far back to look (e.g., 5m, 1h, 24h)"
+      limit:
+        type: number
+        default: 100
+        description: Maximum number of events to return
+    run: |
+      aws logs filter-log-events \
+        --log-group-name "{{ .log_group }}" \
+        {{ if .filter }}--filter-pattern "{{ .filter }}"{{ end }} \
+        --start-time $(date -d '{{ .since }} ago' +%s000 2>/dev/null || date -v-{{ .since }} +%s000) \
+        --limit {{ .limit }} \
+        --query 'events[].{timestamp:timestamp,message:message}' \
+        --output table
+
+  - name: aws_lambda_list
+    description: List Lambda functions
+    read_only: true
+    params:
+      filter:
+        type: string
+        description: Filter by function name prefix
+    run: |
+      aws lambda list-functions \
+        --query 'Functions[{{ if .filter }}?starts_with(FunctionName, `{{ .filter }}`){{ end }}].{Name:FunctionName,Runtime:Runtime,Memory:MemorySize,Timeout:Timeout,LastModified:LastModified}' \
+        --output table
+
+  - name: aws_lambda_invoke
+    description: Invoke a Lambda function
+    dangerous: true
+    params:
+      function:
+        type: string
+        required: true
+        description: Lambda function name or ARN
+      payload:
+        type: string
+        description: JSON payload to send
+    run: |
+      aws lambda invoke \
+        --function-name "{{ .function }}" \
+        {{ if .payload }}--payload '{{ .payload }}'{{ end }} \
+        --cli-binary-format raw-in-base64-out \
+        /dev/stdout
+
+  - name: aws_rds_list
+    description: List RDS database instances
+    read_only: true
+    params: {}
+    run: |
+      aws rds describe-db-instances \
+        --query 'DBInstances[].{ID:DBInstanceIdentifier,Engine:Engine,Status:DBInstanceStatus,Class:DBInstanceClass,Endpoint:Endpoint.Address}' \
+        --output table
+
+  - name: aws_ecs_services
+    description: List ECS services in a cluster
+    read_only: true
+    params:
+      cluster:
+        type: string
+        required: true
+        description: ECS cluster name
+    run: |
+      aws ecs list-services --cluster {{ .cluster }} --query 'serviceArns[]' --output text | \
+      xargs -I {} aws ecs describe-services --cluster {{ .cluster }} --services {} \
+        --query 'services[].{Name:serviceName,Status:status,Desired:desiredCount,Running:runningCount,Pending:pendingCount}' \
+        --output table
+
+  - name: aws_ecr_images
+    description: List images in an ECR repository
+    read_only: true
+    params:
+      repository:
+        type: string
+        required: true
+        description: ECR repository name
+    run: |
+      aws ecr describe-images --repository-name {{ .repository }} \
+        --query 'imageDetails | sort_by(@, &imagePushedAt) | reverse(@) | [0:10].{Tag:imageTags[0],Pushed:imagePushedAt,Size:imageSizeInBytes}' \
+        --output table
+
+prompts:
+  cost_awareness: |
+    When working with AWS:
+    - Check instance types before recommending (right-sizing)
+    - Consider Reserved Instances for long-running workloads
+    - Use aws_sts_identity first to confirm you're in the right account
+    - Be careful with Lambda invocations (they cost money)
+
+  debugging: |
+    AWS debugging workflow:
+    1. Confirm identity with aws_sts_identity
+    2. Check resource status (ec2_list, lambda_list, etc.)
+    3. Check CloudWatch logs for errors
+    4. Look at recent changes/deployments

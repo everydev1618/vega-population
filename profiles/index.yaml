@@ -1,0 +1,37 @@
+# Vega Population - Profiles Index
+
+profiles:
+  platform-engineer:
+    version: 1.0.0
+    description: Full platform engineering toolkit
+    author: vegaops
+    persona: devops-lead
+    skills: [kubernetes-ops, aws-devops, terraform, docker-ops, github-actions, monitoring]
+
+  startup-cto:
+    version: 1.0.0
+    description: Everything a startup CTO needs
+    author: vegaops
+    persona: architect
+    skills: [aws-devops, github-actions, docker-ops, code-review, monitoring]
+
+  full-stack-dev:
+    version: 1.0.0
+    description: Frontend + backend + deployment
+    author: vegaops
+    persona: code-reviewer
+    skills: [github-actions, docker-ops, npm-ops, database-admin]
+
+  sre-oncall:
+    version: 1.0.0
+    description: SRE on-call toolkit
+    author: vegaops
+    persona: incident-commander
+    skills: [kubernetes-ops, aws-devops, monitoring, docker-ops]
+
+  security-reviewer:
+    version: 1.0.0
+    description: Security-focused code review
+    author: vegaops
+    persona: security-analyst
+    skills: [code-review, git-advanced]
