@@ -1,4 +1,4 @@
-module github.com/martellcode/vega-population
+module github.com/everydev1618/vega-population
 
 go 1.21
 

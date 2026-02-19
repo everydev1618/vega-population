@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/martellcode/vega-population/population"
+	"github.com/everydev1618/vega-population/population"
 )
 
 func main() {
