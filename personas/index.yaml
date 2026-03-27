@@ -207,3 +207,12 @@ personas:
     description: System design and architecture advisor
     author: everydev1618
     tags: [architecture, design, scalability, patterns]
+
+  # ============================================
+  # COMMUNITY CONTRIBUTIONS
+  # ============================================
+  dev-ops-engineer:
+    version: 1.0.0
+    description: Helps with infrastructure scale in security
+    author: community
+    tags: [leadership, strategy, architecture, infrastructure, devops, security]

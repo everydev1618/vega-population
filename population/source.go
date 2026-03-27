@@ -114,17 +114,25 @@ type ProfileIndexEntry struct {
 }
 
 // Manifest represents a vega.yaml file.
+// ManifestTool represents a tool entry in a skill manifest (only name is needed for indexing).
+type ManifestTool struct {
+	Name string `yaml:"name"`
+}
+
+// Manifest represents a vega.yaml file.
 type Manifest struct {
-	Kind              string   `yaml:"kind"`
-	Name              string   `yaml:"name"`
-	Version           string   `yaml:"version"`
-	Description       string   `yaml:"description"`
-	Author            string   `yaml:"author"`
-	Tags              []string `yaml:"tags,omitempty"`
-	Persona           string   `yaml:"persona,omitempty"`
-	Skills            []string `yaml:"skills,omitempty"`
-	RecommendedSkills []string `yaml:"recommended_skills,omitempty"`
-	SystemPrompt      string   `yaml:"system_prompt,omitempty"`
+	Kind               string         `yaml:"kind"`
+	Name               string         `yaml:"name"`
+	Version            string         `yaml:"version"`
+	Description        string         `yaml:"description"`
+	Author             string         `yaml:"author"`
+	Tags               []string       `yaml:"tags,omitempty"`
+	Persona            string         `yaml:"persona,omitempty"`
+	Skills             []string       `yaml:"skills,omitempty"`
+	RecommendedSkills  []string       `yaml:"recommended_skills,omitempty"`
+	SystemPrompt       string         `yaml:"system_prompt,omitempty"`
+	SystemPromptAppend string         `yaml:"system_prompt_append,omitempty"`
+	Tools              []ManifestTool `yaml:"tools,omitempty"`
 }
 
 // getIndex fetches and parses an index file.

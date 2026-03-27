@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -27,6 +29,10 @@ func RunCLI(args []string) error {
 		return runInfo(cmdArgs)
 	case "export":
 		return runExport(cmdArgs)
+	case "sync":
+		return runSync(cmdArgs)
+	case "reindex":
+		return runReindex(cmdArgs)
 	case "update":
 		return runUpdate(cmdArgs)
 	case "help", "-h", "--help":
@@ -45,6 +51,8 @@ Commands:
   list               List installed items
   info <name>        Show detailed information about an item
   export <name>      Export a persona as YAML for tron.vega.yaml
+  sync               Sync personas as Claude Code skills (~/.claude/skills/)
+  reindex            Regenerate index.yaml files from directories
   update             Update the local cache
 
 Examples:
@@ -53,6 +61,8 @@ Examples:
   vega population install @incident-commander
   vega population install +platform-engineer
   vega population export @cmo
+  vega population sync
+  vega population sync @ceo @cto
   vega population list`)
 	return nil
 }
@@ -375,6 +385,159 @@ func runExport(args []string) error {
 	fmt.Printf("      max_restarts: 2\n")
 
 	return nil
+}
+
+func runSync(args []string) error {
+	fs := flag.NewFlagSet("sync", flag.ExitOnError)
+	sourceFlag := fs.String("source", "", "Custom source URL or path")
+	targetFlag := fs.String("target", "", "Target directory (default: ~/.claude/skills)")
+	projectFlag := fs.Bool("project", false, "Sync to .claude/skills/ in current directory")
+	prefixFlag := fs.String("prefix", "vega-", "Prefix for skill directory names")
+	pruneFlag := fs.Bool("prune", false, "Remove skills no longer in population source")
+	forceFlag := fs.Bool("force", false, "Overwrite even if unchanged")
+	dryRunFlag := fs.Bool("dry-run", false, "Show what would be done without making changes")
+	noCacheFlag := fs.Bool("no-cache", false, "Disable caching")
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	var opts []Option
+	if *sourceFlag != "" {
+		opts = append(opts, WithSource(*sourceFlag))
+	}
+	if *noCacheFlag {
+		opts = append(opts, WithNoCache())
+	}
+
+	client, err := NewClient(opts...)
+	if err != nil {
+		return err
+	}
+
+	syncOpts := &SyncOptions{
+		Prefix: *prefixFlag,
+		Prune:  *pruneFlag,
+		Force:  *forceFlag,
+		DryRun: *dryRunFlag,
+	}
+
+	// Determine target directory
+	if *targetFlag != "" {
+		syncOpts.TargetDir = *targetFlag
+	} else if *projectFlag {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("could not determine current directory: %w", err)
+		}
+		syncOpts.TargetDir = filepath.Join(cwd, ".claude", "skills")
+	}
+
+	// Collect specific persona names from positional args
+	for _, arg := range fs.Args() {
+		syncOpts.Personas = append(syncOpts.Personas, arg)
+	}
+
+	if !*dryRunFlag {
+		fmt.Printf("Syncing personas to Claude Code skills...\n")
+		if syncOpts.TargetDir != "" {
+			fmt.Printf("Target: %s\n", syncOpts.TargetDir)
+		} else {
+			fmt.Printf("Target: ~/.claude/skills/\n")
+		}
+		fmt.Println()
+	}
+
+	result, err := client.Sync(context.Background(), syncOpts)
+	if err != nil {
+		return err
+	}
+
+	// Print results
+	if len(result.Created) > 0 {
+		fmt.Printf("Created %d skill(s):\n", len(result.Created))
+		for _, name := range result.Created {
+			fmt.Printf("  + %s%s/SKILL.md\n", syncOpts.Prefix, name)
+		}
+	}
+
+	if len(result.Updated) > 0 {
+		fmt.Printf("Updated %d skill(s):\n", len(result.Updated))
+		for _, name := range result.Updated {
+			fmt.Printf("  ~ %s%s/SKILL.md\n", syncOpts.Prefix, name)
+		}
+	}
+
+	if len(result.Pruned) > 0 {
+		fmt.Printf("Pruned %d skill(s):\n", len(result.Pruned))
+		for _, name := range result.Pruned {
+			fmt.Printf("  - %s%s/\n", syncOpts.Prefix, name)
+		}
+	}
+
+	if len(result.Skipped) > 0 && !*dryRunFlag {
+		fmt.Printf("Skipped %d unchanged skill(s)\n", len(result.Skipped))
+	}
+
+	total := len(result.Created) + len(result.Updated) + len(result.Skipped)
+	if !*dryRunFlag && total > 0 {
+		fmt.Printf("\nDone. %d persona(s) available as Claude Code skills.\n", total)
+	}
+
+	return nil
+}
+
+func runReindex(args []string) error {
+	fs := flag.NewFlagSet("reindex", flag.ExitOnError)
+	rootFlag := fs.String("root", "", "Root directory of vega-population repo (default: cwd)")
+	checkFlag := fs.Bool("check", false, "Check if indexes are up to date (for CI, exits non-zero if stale)")
+	dryRunFlag := fs.Bool("dry-run", false, "Show what would change without writing")
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	opts := &ReindexOptions{
+		RootDir: *rootFlag,
+		Check:   *checkFlag,
+		DryRun:  *dryRunFlag,
+	}
+
+	result, err := Reindex(opts)
+	if err != nil {
+		return err
+	}
+
+	if result.UpToDate {
+		fmt.Println("All indexes are up to date.")
+		return nil
+	}
+
+	// Print changes
+	printReindexChanges("personas", result.PersonasAdded, result.PersonasRemoved)
+	printReindexChanges("skills", result.SkillsAdded, result.SkillsRemoved)
+	printReindexChanges("profiles", result.ProfilesAdded, result.ProfilesRemoved)
+
+	if *checkFlag {
+		return fmt.Errorf("indexes are out of date — run: vega population reindex")
+	}
+
+	if *dryRunFlag {
+		fmt.Println("\nDry run — no files written.")
+	} else {
+		fmt.Println("\nIndexes updated.")
+	}
+
+	return nil
+}
+
+func printReindexChanges(kind string, added, removed []string) {
+	for _, name := range added {
+		fmt.Printf("  + %s/%s (new)\n", kind, name)
+	}
+	for _, name := range removed {
+		fmt.Printf("  - %s/%s (removed)\n", kind, name)
+	}
 }
 
 func runUpdate(args []string) error {
